@@ -24,8 +24,8 @@
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
-            touch-action: manipulation; /* Improves tap response */
-            user-select: none; /* Prevents text selection */
+            touch-action: manipulation;
+            user-select: none;
         }
 
         /* HEADER */
@@ -91,7 +91,6 @@
             overflow: hidden;
         }
 
-        /* The item currently inside the machine */
         #current-item-display {
             font-size: 5rem;
             filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));
@@ -108,7 +107,7 @@
 
         /* UPGRADES MENU */
         #upgrade-menu {
-            height: 40%;
+            height: 45%;
             background: #2f3542;
             border-top: 2px solid #57606f;
             overflow-y: auto;
@@ -120,7 +119,7 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             color: #a4b0be;
-            margin: 10px 0 5px 0;
+            margin: 15px 0 5px 0;
             border-bottom: 1px solid #57606f;
         }
 
@@ -141,15 +140,29 @@
             cursor: pointer;
         }
         .upgrade-card.affordable:active { background: #454d5e; }
-        .upgrade-card.locked { opacity: 0.5; pointer-events: none; }
-
+        
+        .upg-info { flex: 1; }
         .upg-info h3 { margin: 0; font-size: 1rem; }
-        .upg-info p { margin: 2px 0 0; font-size: 0.8rem; color: #a4b0be; }
+        .upg-info p { margin: 2px 0 0; font-size: 0.8rem; color: #a4b0be; font-style: italic; }
+        
+        .buff-label {
+            display: block;
+            margin-top: 4px;
+            font-size: 0.75rem;
+            color: var(--accent-color);
+            font-weight: bold;
+            background: rgba(46, 213, 115, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            width: fit-content;
+        }
+
         .upg-cost {
             font-weight: bold;
             color: #ff6b81;
-            min-width: 60px;
+            min-width: 70px;
             text-align: right;
+            font-size: 0.9rem;
         }
         .upg-cost.can-buy { color: var(--accent-color); }
 
@@ -183,7 +196,6 @@
             animation: floatUp 0.8s ease-out forwards;
         }
 
-        /* Button Reset */
         .reset-btn {
             margin-top: 20px;
             margin-bottom: 30px;
@@ -214,7 +226,7 @@
     </div>
 
     <div id="upgrade-menu">
-        <div class="section-title">New Products (Increase Value)</div>
+        <div class="section-title">Store Products (Increase Value)</div>
         <div id="product-list"></div>
 
         <div class="section-title">Automation (Auto-Click)</div>
@@ -229,12 +241,11 @@ let state = {
     money: 0,
     lifetimeMoney: 0,
     clickCount: 0,
-    mps: 0, // Money Per Second
+    mps: 0, 
     productIndex: 0,
-    inventory: {} // Stores counts of automation upgrades
+    inventory: {}
 };
 
-// The Progression of things you sell
 const PRODUCTS = [
     { name: "Soda",         emoji: "🥤", baseVal: 1,    cost: 0 },
     { name: "Chips",        emoji: "🍟", baseVal: 2,    cost: 100 },
@@ -249,14 +260,19 @@ const PRODUCTS = [
     { name: "Time Machine", emoji: "⏳", baseVal: 100000, cost: 100000000 }
 ];
 
-// Automation Upgrades
+// EXPANDED LIST - NOW 11 ITEMS
 const AUTOMATION = [
-    { id: "kid",    name: "Neighborhood Kid", desc: "Clicks once every 2 sec", rate: 0.5, baseCost: 15 },
-    { id: "kicker", name: "Machine Kicker",   desc: "Kicks machine for loose change", rate: 2,   baseCost: 100 },
-    { id: "hack",   name: "Hacker",           desc: "Digital sales",               rate: 8,   baseCost: 1100 },
-    { id: "robot",  name: "Industrial Arm",   desc: "Precision dispensing",        rate: 30,  baseCost: 12000 },
-    { id: "ai",     name: "Vending AI",       desc: "Maximizes profits",           rate: 100, baseCost: 130000 },
-    { id: "portal", name: "Wormhole",         desc: "Teleports snacks directly",   rate: 500, baseCost: 1400000 }
+    { id: "kid",    name: "Neighborhood Kid", desc: "Just keeps tapping it.",        rate: 0.5,   baseCost: 15 },
+    { id: "kicker", name: "Machine Kicker",   desc: "Sometimes violence works.",     rate: 2,     baseCost: 100 },
+    { id: "racoon", name: "Raccoon Squad",    desc: "They work for trash.",          rate: 6,     baseCost: 500 },
+    { id: "hack",   name: "Hacker",           desc: "Bypasses the coin slot.",       rate: 15,    baseCost: 2000 },
+    { id: "drone",  name: "Drone Delivery",   desc: "Snacks at Mach 1.",             rate: 40,    baseCost: 7500 },
+    { id: "robot",  name: "Industrial Arm",   desc: "Engineered for snacks.",        rate: 100,   baseCost: 25000 },
+    { id: "ads",    name: "Hypnotic Ads",     desc: "Subliminal TikToks.",           rate: 250,   baseCost: 90000 },
+    { id: "ai",     name: "Vending AI",       desc: "Optimizes flavor profiles.",    rate: 600,   baseCost: 300000 },
+    { id: "dark",   name: "Dark Matter Gen",  desc: "Turns physics into profit.",    rate: 2000,  baseCost: 1200000 },
+    { id: "portal", name: "Wormhole",         desc: "Summons from 4th dimension.",   rate: 8000,  baseCost: 6000000 },
+    { id: "verse",  name: "Multiverse Franch",desc: "Sells to every reality.",       rate: 30000, baseCost: 50000000 }
 ];
 
 // Elements
@@ -271,18 +287,19 @@ const elAutoList = document.getElementById('automation-list');
 
 function init() {
     loadGame();
+    recalcMPS(); 
     renderUpgrades();
     updateUI();
     
-    // Automation Loop (runs every 100ms for smoothness)
+    // Automation Loop
     setInterval(() => {
         if (state.mps > 0) {
             addMoney(state.mps / 10);
         }
     }, 100);
 
-    // Save Loop (every 10 sec)
-    setInterval(saveGame, 10000);
+    // Save Loop
+    setInterval(saveGame, 5000);
 }
 
 function getCurrentProduct() {
@@ -297,54 +314,42 @@ function addMoney(amount) {
     state.money += amount;
     state.lifetimeMoney += amount;
     updateUI();
-    checkUnlocks();
 }
 
 /** INTERACTION **/
 
-// Handle machine click
 elMachine.addEventListener('pointerdown', (e) => {
-    // 1. Add Money
     const val = getClickValue();
     addMoney(val);
     state.clickCount++;
 
-    // 2. Visual Effects
     spawnFloatingText(e.clientX, e.clientY, `+$${formatNumber(val)}`);
     spawnFallingItem();
     
-    // Shake animation reset
     elMachine.style.transform = 'scale(0.95) rotate(' + (Math.random() * 4 - 2) + 'deg)';
     setTimeout(() => { elMachine.style.transform = 'scale(1) rotate(0deg)'; }, 50);
 });
 
-// Spawn the floating +$ text
 function spawnFloatingText(x, y, text) {
     const el = document.createElement('div');
     el.className = 'float-text';
     el.innerText = text;
-    // Randomize slight position
     const offsetX = (Math.random() * 40) - 20;
     el.style.left = (x + offsetX) + 'px';
-    el.style.top = (y - 50) + 'px'; // Start slightly above finger
+    el.style.top = (y - 50) + 'px'; 
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 800);
 }
 
-// Spawn the item falling out of machine
 function spawnFallingItem() {
     const item = document.createElement('div');
     item.className = 'falling-item';
     item.innerText = getCurrentProduct().emoji;
-    
-    // Position relative to machine slot
     const rect = elMachine.getBoundingClientRect();
     const startX = rect.left + rect.width / 2 - 20; 
     const startY = rect.bottom - 60;
-
     item.style.left = startX + 'px';
     item.style.top = startY + 'px';
-    
     document.body.appendChild(item);
     setTimeout(() => item.remove(), 1000);
 }
@@ -356,9 +361,11 @@ function buyProduct(index) {
     if (state.money >= prod.cost) {
         state.money -= prod.cost;
         state.productIndex = index;
-        renderUpgrades(); // Re-render to show purchased status
+        
+        recalcMPS(); 
+        renderUpgrades();
         updateUI();
-        // Effect
+        
         elItemDisplay.innerText = prod.emoji;
         spawnFloatingText(window.innerWidth/2, window.innerHeight/2, "UPGRADED!");
     }
@@ -371,7 +378,7 @@ function buyAutomation(index) {
         state.money -= cost;
         state.inventory[auto.id] = (state.inventory[auto.id] || 0) + 1;
         recalcMPS();
-        renderUpgrades(); // Update costs
+        renderUpgrades(); 
         updateUI();
     }
 }
@@ -379,24 +386,21 @@ function buyAutomation(index) {
 function getAutomationCost(index) {
     const auto = AUTOMATION[index];
     const count = state.inventory[auto.id] || 0;
-    // Cost scales by 1.15x per purchase
     return Math.floor(auto.baseCost * Math.pow(1.15, count));
 }
 
+function getProductMultiplier() {
+    return Math.max(1, (getClickValue() * 0.1));
+}
+
 function recalcMPS() {
-    let mps = 0;
+    let rawMps = 0;
     AUTOMATION.forEach(auto => {
         const count = state.inventory[auto.id] || 0;
-        mps += count * auto.rate;
+        rawMps += count * auto.rate;
     });
-    // Scale MPS by current product value (selling Gold Bars makes robots richer)
-    // To balance, we multiply by a factor of the product multiplier
-    // A simple approach: MPS * (CurrentProductBaseVal) is too OP.
-    // Let's keep MPS flat for now, or the numbers explode too fast for JS Number limit.
-    // Instead: Automation sells the Current Product? 
-    // Let's make it: MPS = TotalRate * (CurrentProductBaseValue * 0.5)
-    // This gives incentive to upgrade product for automation too.
-    state.mps = mps * Math.max(1, (getClickValue() * 0.1));
+    
+    state.mps = rawMps * getProductMultiplier();
 }
 
 /** UI RENDERING **/
@@ -404,6 +408,7 @@ function recalcMPS() {
 function formatNumber(num) {
     if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
     if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+    if (num < 10 && num % 1 !== 0) return num.toFixed(1);
     return Math.floor(num);
 }
 
@@ -412,7 +417,6 @@ function updateUI() {
     elCps.innerText = '$' + formatNumber(state.mps) + ' / sec';
     elItemDisplay.innerText = getCurrentProduct().emoji;
 
-    // Check affordability of buttons
     document.querySelectorAll('.upgrade-card').forEach(card => {
         const cost = parseInt(card.dataset.cost);
         const costEl = card.querySelector('.upg-cost');
@@ -426,16 +430,11 @@ function updateUI() {
     });
 }
 
-function checkUnlocks() {
-    // Could be used to reveal hidden items later
-}
-
 function renderUpgrades() {
     // 1. Products List
     elProductList.innerHTML = '';
     PRODUCTS.forEach((prod, idx) => {
-        if (idx <= state.productIndex) return; // Already bought or current
-        // Only show next 2 available to keep mystery
+        if (idx <= state.productIndex) return; 
         if (idx > state.productIndex + 2) return;
 
         const card = document.createElement('div');
@@ -445,7 +444,7 @@ function renderUpgrades() {
         card.innerHTML = `
             <div class="upg-info">
                 <h3>${prod.emoji} ${prod.name}</h3>
-                <p>Value: $${formatNumber(prod.baseVal)} / click</p>
+                <span class="buff-label">Item Value: $${formatNumber(prod.baseVal)}</span>
             </div>
             <div class="upg-cost">$${formatNumber(prod.cost)}</div>
         `;
@@ -458,9 +457,13 @@ function renderUpgrades() {
 
     // 2. Automation List
     elAutoList.innerHTML = '';
+    
+    const currentMult = getProductMultiplier();
+
     AUTOMATION.forEach((auto, idx) => {
         const cost = getAutomationCost(idx);
         const count = state.inventory[auto.id] || 0;
+        const effectiveRate = auto.rate * currentMult;
         
         const card = document.createElement('div');
         card.className = 'upgrade-card';
@@ -470,6 +473,7 @@ function renderUpgrades() {
             <div class="upg-info">
                 <h3>${auto.name} <span style="font-size:0.8rem; color:#888">(x${count})</span></h3>
                 <p>${auto.desc}</p>
+                <span class="buff-label">+$${formatNumber(effectiveRate)} / sec</span>
             </div>
             <div class="upg-cost">$${formatNumber(cost)}</div>
         `;
@@ -487,8 +491,7 @@ function loadGame() {
     if (saved) {
         try {
             const parsed = JSON.parse(saved);
-            state = { ...state, ...parsed }; // Merge to ensure new fields exist
-            recalcMPS();
+            state = { ...state, ...parsed };
         } catch (e) { console.error("Save file corrupted"); }
     }
 }
@@ -500,7 +503,6 @@ function hardReset() {
     }
 }
 
-// Start
 init();
 
 </script>
