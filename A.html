@@ -3,571 +3,504 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Italian Brainrot TD</title>
+    <title>Infinite Vending Machine</title>
     <style>
+        :root {
+            --bg-color: #22202b;
+            --machine-color: #ff4757;
+            --glass-color: #dfe4ea;
+            --text-color: #ffffff;
+            --accent-color: #2ed573;
+            --btn-bg: #3742fa;
+        }
+
         body {
-            background-color: #2b2b2b;
-            color: white;
-            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
-            text-align: center;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            overflow: hidden;
-            touch-action: none;
-        }
-        h1 { margin: 5px; font-size: 1.5rem; text-shadow: 2px 2px #ff0000; }
-        
-        #gameContainer {
-            position: relative;
-            display: inline-block;
-            border: 4px solid #00AA00; /* Italian Flag Green */
-            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
-        }
-
-        canvas { background: #444; display: block; }
-
-        /* UI Overlay */
-        #ui-layer {
-            margin-top: 10px;
+            padding: 0;
             display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation; /* Improves tap response */
+            user-select: none; /* Prevents text selection */
         }
 
-        .stat-box {
-            background: #222;
-            padding: 5px 15px;
-            border-radius: 8px;
-            border: 2px solid white;
+        /* HEADER */
+        header {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        h1 { margin: 0; font-size: 1.2rem; color: #aaa; }
+        #money-display {
+            font-size: 2.5rem;
             font-weight: bold;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px rgba(46, 213, 115, 0.3);
+            margin: 5px 0;
         }
+        #cps-display { font-size: 0.9rem; color: #888; }
 
-        #aura-display { color: cyan; border-color: cyan; }
-        #lives-display { color: red; border-color: red; }
-        #wave-display { color: yellow; border-color: yellow; }
-
-        /* Tower Selection Buttons */
-        .tower-btn {
-            background: #333;
-            color: white;
-            border: 2px solid #555;
-            padding: 10px;
-            border-radius: 8px;
-            cursor: pointer;
+        /* GAME AREA */
+        #game-stage {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 80px;
-            transition: transform 0.1s;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
         }
-        .tower-btn:active { transform: scale(0.95); }
-        .tower-btn.selected { border-color: lime; background: #004400; }
-        .emoji { font-size: 1.5rem; }
-        .cost { font-size: 0.8rem; color: #aaa; }
 
-        #notif {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 2rem;
+        /* THE MACHINE */
+        #machine-container {
+            width: 200px;
+            height: 300px;
+            background: var(--machine-color);
+            border-radius: 15px 15px 0 0;
+            border: 4px solid #c0392b;
+            border-bottom: none;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            transition: transform 0.05s;
+            cursor: pointer;
+            z-index: 2;
+        }
+        
+        #machine-container:active { transform: scale(0.98); }
+
+        .glass-panel {
+            width: 160px;
+            height: 180px;
+            background: #2f3542;
+            margin-top: 20px;
+            border-radius: 5px;
+            border: 4px solid #bdc3c7;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* The item currently inside the machine */
+        #current-item-display {
+            font-size: 5rem;
+            filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));
+        }
+
+        .dispense-slot {
+            width: 160px;
+            height: 40px;
+            background: #111;
+            margin-top: 20px;
+            border-radius: 0 0 5px 5px;
+            border-top: 4px solid #bdc3c7;
+        }
+
+        /* UPGRADES MENU */
+        #upgrade-menu {
+            height: 40%;
+            background: #2f3542;
+            border-top: 2px solid #57606f;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #a4b0be;
+            margin: 10px 0 5px 0;
+            border-bottom: 1px solid #57606f;
+        }
+
+        .upgrade-card {
+            background: #383e4d;
+            margin-bottom: 8px;
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid transparent;
+            transition: background 0.2s;
+        }
+        
+        .upgrade-card.affordable {
+            border-color: var(--accent-color);
+            cursor: pointer;
+        }
+        .upgrade-card.affordable:active { background: #454d5e; }
+        .upgrade-card.locked { opacity: 0.5; pointer-events: none; }
+
+        .upg-info h3 { margin: 0; font-size: 1rem; }
+        .upg-info p { margin: 2px 0 0; font-size: 0.8rem; color: #a4b0be; }
+        .upg-cost {
             font-weight: bold;
-            text-shadow: 2px 2px black;
+            color: #ff6b81;
+            min-width: 60px;
+            text-align: right;
+        }
+        .upg-cost.can-buy { color: var(--accent-color); }
+
+        /* ANIMATIONS */
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(200px) rotate(360deg); opacity: 0; }
+        }
+
+        .falling-item {
+            position: absolute;
+            font-size: 2rem;
             pointer-events: none;
-            display: none;
+            z-index: 1;
+            animation: fall 1s ease-in forwards;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+
+        .float-text {
+            position: absolute;
+            font-weight: bold;
+            color: #fff;
+            pointer-events: none;
+            font-size: 1.2rem;
+            text-shadow: 1px 1px 0 #000;
             z-index: 10;
+            animation: floatUp 0.8s ease-out forwards;
+        }
+
+        /* Button Reset */
+        .reset-btn {
+            margin-top: 20px;
+            margin-bottom: 30px;
+            background: transparent;
+            border: 1px solid #ff4757;
+            color: #ff4757;
+            padding: 10px;
+            width: 100%;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
 
-    <h1>🇮🇹 Italian Brainrot TD 🤌</h1>
-    
-    <div id="ui-layer">
-        <div id="aura-display" class="stat-box">Aura: 100</div>
-        <div id="lives-display" class="stat-box">Sanity: 20</div>
-        <div id="wave-display" class="stat-box">Wave: 1</div>
+    <header>
+        <h1>INFINITE VENDING</h1>
+        <div id="money-display">$0</div>
+        <div id="cps-display">0.00 / sec</div>
+    </header>
+
+    <div id="game-stage">
+        <div id="machine-container">
+            <div class="glass-panel">
+                <div id="current-item-display">🥤</div>
+            </div>
+            <div class="dispense-slot"></div>
+        </div>
     </div>
 
-    <div id="gameContainer">
-        <canvas id="gameCanvas"></canvas>
-        <div id="notif"></div>
-    </div>
+    <div id="upgrade-menu">
+        <div class="section-title">New Products (Increase Value)</div>
+        <div id="product-list"></div>
 
-    <div id="ui-layer">
-        <div class="tower-btn" onclick="selectTower(0)" id="btn0">
-            <span class="emoji">👨‍🍳</span>
-            <span>Chef</span>
-            <span class="cost">50 Aura</span>
-        </div>
-        <div class="tower-btn" onclick="selectTower(1)" id="btn1">
-            <span class="emoji">👵</span>
-            <span>Nonna</span>
-            <span class="cost">120 Aura</span>
-        </div>
-        <div class="tower-btn" onclick="selectTower(2)" id="btn2">
-            <span class="emoji">🗿</span>
-            <span>Mogger</span>
-            <span class="cost">200 Aura</span>
-        </div>
+        <div class="section-title">Automation (Auto-Click)</div>
+        <div id="automation-list"></div>
+
+        <button class="reset-btn" onclick="hardReset()">Reset Progress</button>
     </div>
-    
-    <p style="font-size: 0.8rem; color: #888;">Tap map to place. Don't let the Pineapple Pizza reach the Pope!</p>
 
 <script>
-/** CONFIG **/
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-// Responsive canvas
-const TILE = 40;
-const COLS = 16;
-const ROWS = 10;
-canvas.width = TILE * COLS;
-canvas.height = TILE * ROWS;
+/** GAME DATA & CONFIG **/
+let state = {
+    money: 0,
+    lifetimeMoney: 0,
+    clickCount: 0,
+    mps: 0, // Money Per Second
+    productIndex: 0,
+    inventory: {} // Stores counts of automation upgrades
+};
 
-// Game State
-let aura = 100;
-let lives = 20;
-let wave = 1;
-let frame = 0;
-let gameOver = false;
-let selectedTowerIdx = -1;
-
-// Lists
-const towers = [];
-const enemies = [];
-const projectiles = [];
-const particles = [];
-
-// The Path (Coordinates in Grid Units)
-// A simple winding path
-const pathPoints = [
-    {x:0, y:2}, {x:4, y:2}, {x:4, y:7}, {x:10, y:7}, {x:10, y:2}, {x:14, y:2}, {x:14, y:8}, {x:15, y:8}
+// The Progression of things you sell
+const PRODUCTS = [
+    { name: "Soda",         emoji: "🥤", baseVal: 1,    cost: 0 },
+    { name: "Chips",        emoji: "🍟", baseVal: 2,    cost: 100 },
+    { name: "Pizza Slice",  emoji: "🍕", baseVal: 5,    cost: 500 },
+    { name: "Sushi",        emoji: "🍣", baseVal: 15,   cost: 2000 },
+    { name: "Smartphone",   emoji: "📱", baseVal: 50,   cost: 8000 },
+    { name: "Gold Bar",     emoji: "🥇", baseVal: 150,  cost: 25000 },
+    { name: "Diamond",      emoji: "💎", baseVal: 500,  cost: 100000 },
+    { name: "Bitcoin",      emoji: "₿",  baseVal: 1500, cost: 500000 },
+    { name: "Moon Rock",    emoji: "🌑", baseVal: 5000, cost: 2000000 },
+    { name: "Alien Egg",    emoji: "👽", baseVal: 25000, cost: 10000000 },
+    { name: "Time Machine", emoji: "⏳", baseVal: 100000, cost: 100000000 }
 ];
 
-// Tower Types
-const towerTypes = [
-    { name: "Sigma Chef",   emoji: "👨‍🍳", cost: 50,  range: 3,  cooldown: 30, damage: 10, color: "white", proj: "🍝" },
-    { name: "Nonna",        emoji: "👵", cost: 120, range: 6,  cooldown: 60, damage: 50, color: "pink",  proj: "🩴" }, // La Chancla
-    { name: "Mogger",       emoji: "🗿", cost: 200, range: 2.5, cooldown: 45, damage: 0.5, color: "gray",  proj: "🤫" } // AoE shockwave
+// Automation Upgrades
+const AUTOMATION = [
+    { id: "kid",    name: "Neighborhood Kid", desc: "Clicks once every 2 sec", rate: 0.5, baseCost: 15 },
+    { id: "kicker", name: "Machine Kicker",   desc: "Kicks machine for loose change", rate: 2,   baseCost: 100 },
+    { id: "hack",   name: "Hacker",           desc: "Digital sales",               rate: 8,   baseCost: 1100 },
+    { id: "robot",  name: "Industrial Arm",   desc: "Precision dispensing",        rate: 30,  baseCost: 12000 },
+    { id: "ai",     name: "Vending AI",       desc: "Maximizes profits",           rate: 100, baseCost: 130000 },
+    { id: "portal", name: "Wormhole",         desc: "Teleports snacks directly",   rate: 500, baseCost: 1400000 }
 ];
 
-// Enemy Types (Brainrot themed)
-// types: 0=PineapplePizza, 1=KetchupPasta, 2=Skibidi
-const enemyTypes = [
-    { name: "Pineapple", emoji: "🍍", hp: 30,  speed: 0.05, reward: 5 },
-    { name: "Ketchup",   emoji: "🩸", hp: 80,  speed: 0.02, reward: 10 },
-    { name: "Skibidi",   emoji: "🚽", hp: 300, speed: 0.015, reward: 50 } // Boss
-];
+// Elements
+const elMoney = document.getElementById('money-display');
+const elCps = document.getElementById('cps-display');
+const elMachine = document.getElementById('machine-container');
+const elItemDisplay = document.getElementById('current-item-display');
+const elProductList = document.getElementById('product-list');
+const elAutoList = document.getElementById('automation-list');
 
-/** CLASSES **/
-
-class Enemy {
-    constructor(typeIdx) {
-        const type = enemyTypes[typeIdx];
-        this.emoji = type.emoji;
-        this.hp = type.hp + (wave * 5); // Scaling difficulty
-        this.maxHp = this.hp;
-        this.speed = type.speed;
-        this.reward = type.reward;
-        
-        // Pathing logic
-        this.pathIdx = 0;
-        this.x = pathPoints[0].x;
-        this.y = pathPoints[0].y;
-        this.frozen = 0; // Slow effect
-    }
-
-    update() {
-        if (this.frozen > 0) {
-            this.frozen--;
-        }
-
-        const target = pathPoints[this.pathIdx + 1];
-        if (!target) return; // Reached end
-
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        
-        let moveSpeed = this.speed;
-        if (this.frozen > 0) moveSpeed *= 0.5; // Slowed by Mogger
-
-        if (dist < moveSpeed) {
-            this.x = target.x;
-            this.y = target.y;
-            this.pathIdx++;
-            if (this.pathIdx >= pathPoints.length - 1) {
-                this.reachedEnd();
-            }
-        } else {
-            this.x += (dx / dist) * moveSpeed;
-            this.y += (dy / dist) * moveSpeed;
-        }
-    }
-
-    draw() {
-        const sx = this.x * TILE + TILE/2;
-        const sy = this.y * TILE + TILE/2;
-        
-        // Health bar
-        const hpPct = this.hp / this.maxHp;
-        ctx.fillStyle = 'red';
-        ctx.fillRect(sx - 10, sy - 20, 20, 4);
-        ctx.fillStyle = '#0f0';
-        ctx.fillRect(sx - 10, sy - 20, 20 * hpPct, 4);
-
-        ctx.font = "24px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(this.emoji, sx, sy);
-    }
-
-    reachedEnd() {
-        this.hp = 0; // Kill self
-        lives--;
-        createParticle(this.x, this.y, "❌");
-        updateUI();
-        if (lives <= 0) endGame();
-    }
-}
-
-class Tower {
-    constructor(c, r, typeIdx) {
-        this.c = c;
-        this.r = r;
-        this.type = towerTypes[typeIdx];
-        this.cd = 0; // cooldown
-    }
-
-    update() {
-        if (this.cd > 0) this.cd--;
-
-        // Find target
-        if (this.cd <= 0) {
-            // "Mogger" is special (AoE around self)
-            if (this.type.name === "Mogger") {
-                let hit = false;
-                enemies.forEach(e => {
-                    const dist = Math.hypot(e.x - this.c, e.y - this.r);
-                    if (dist <= this.type.range) {
-                        e.hp -= this.type.damage; // Tick damage
-                        e.frozen = 20; // Apply slow
-                        hit = true;
-                    }
-                });
-                if (hit) {
-                     // Draw shockwave effect constantly if hitting
-                     ctx.beginPath();
-                     ctx.arc(this.c * TILE + TILE/2, this.r * TILE + TILE/2, this.type.range * TILE, 0, Math.PI*2);
-                     ctx.strokeStyle = "rgba(255, 255, 0, 0.3)";
-                     ctx.stroke();
-                }
-                return; // Mogger doesn't shoot projectiles
-            }
-
-            // Normal Shooters
-            let target = null;
-            let minDst = Infinity;
-
-            // Target First (furthest along path)
-            for (const e of enemies) {
-                const dist = Math.hypot(e.x - this.c, e.y - this.r);
-                if (dist <= this.type.range) {
-                    // Simple logic: pick closest
-                    if (dist < minDst) {
-                        minDst = dist;
-                        target = e;
-                    }
-                }
-            }
-
-            if (target) {
-                this.cd = this.type.cooldown;
-                projectiles.push(new Projectile(this.c, this.r, target, this.type));
-            }
-        }
-    }
-
-    draw() {
-        const x = this.c * TILE;
-        const y = this.r * TILE;
-        
-        // Base
-        ctx.fillStyle = '#333';
-        ctx.fillRect(x+2, y+2, TILE-4, TILE-4);
-
-        ctx.font = "24px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(this.type.emoji, x + TILE/2, y + TILE/2);
-    }
-}
-
-class Projectile {
-    constructor(startC, startR, target, type) {
-        this.x = startC * TILE + TILE/2;
-        this.y = startR * TILE + TILE/2;
-        this.target = target;
-        this.damage = type.damage;
-        this.emoji = type.proj;
-        this.speed = 8;
-        this.active = true;
-    }
-
-    update() {
-        if (!this.target || this.target.hp <= 0) {
-            this.active = false;
-            return;
-        }
-        
-        const tx = this.target.x * TILE + TILE/2;
-        const ty = this.target.y * TILE + TILE/2;
-        
-        const dx = tx - this.x;
-        const dy = ty - this.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-
-        if (dist < this.speed) {
-            // Hit
-            this.target.hp -= this.damage;
-            this.active = false;
-            if (this.target.hp <= 0) {
-                 aura += this.target.reward;
-                 createParticle(this.target.x, this.target.y, "💀");
-                 updateUI();
-            }
-        } else {
-            this.x += (dx/dist) * this.speed;
-            this.y += (dy/dist) * this.speed;
-        }
-    }
-
-    draw() {
-        ctx.font = "16px Arial";
-        ctx.fillText(this.emoji, this.x, this.y);
-    }
-}
-
-function createParticle(gridX, gridY, text) {
-    particles.push({
-        x: gridX * TILE + TILE/2,
-        y: gridY * TILE + TILE/2,
-        text: text,
-        life: 30
-    });
-}
-
-/** GAME LOGIC **/
+/** CORE FUNCTIONS **/
 
 function init() {
+    loadGame();
+    renderUpgrades();
     updateUI();
-    requestAnimationFrame(gameLoop);
+    
+    // Automation Loop (runs every 100ms for smoothness)
+    setInterval(() => {
+        if (state.mps > 0) {
+            addMoney(state.mps / 10);
+        }
+    }, 100);
+
+    // Save Loop (every 10 sec)
+    setInterval(saveGame, 10000);
+}
+
+function getCurrentProduct() {
+    return PRODUCTS[state.productIndex];
+}
+
+function getClickValue() {
+    return getCurrentProduct().baseVal;
+}
+
+function addMoney(amount) {
+    state.money += amount;
+    state.lifetimeMoney += amount;
+    updateUI();
+    checkUnlocks();
+}
+
+/** INTERACTION **/
+
+// Handle machine click
+elMachine.addEventListener('pointerdown', (e) => {
+    // 1. Add Money
+    const val = getClickValue();
+    addMoney(val);
+    state.clickCount++;
+
+    // 2. Visual Effects
+    spawnFloatingText(e.clientX, e.clientY, `+$${formatNumber(val)}`);
+    spawnFallingItem();
+    
+    // Shake animation reset
+    elMachine.style.transform = 'scale(0.95) rotate(' + (Math.random() * 4 - 2) + 'deg)';
+    setTimeout(() => { elMachine.style.transform = 'scale(1) rotate(0deg)'; }, 50);
+});
+
+// Spawn the floating +$ text
+function spawnFloatingText(x, y, text) {
+    const el = document.createElement('div');
+    el.className = 'float-text';
+    el.innerText = text;
+    // Randomize slight position
+    const offsetX = (Math.random() * 40) - 20;
+    el.style.left = (x + offsetX) + 'px';
+    el.style.top = (y - 50) + 'px'; // Start slightly above finger
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 800);
+}
+
+// Spawn the item falling out of machine
+function spawnFallingItem() {
+    const item = document.createElement('div');
+    item.className = 'falling-item';
+    item.innerText = getCurrentProduct().emoji;
+    
+    // Position relative to machine slot
+    const rect = elMachine.getBoundingClientRect();
+    const startX = rect.left + rect.width / 2 - 20; 
+    const startY = rect.bottom - 60;
+
+    item.style.left = startX + 'px';
+    item.style.top = startY + 'px';
+    
+    document.body.appendChild(item);
+    setTimeout(() => item.remove(), 1000);
+}
+
+/** UPGRADES SYSTEM **/
+
+function buyProduct(index) {
+    const prod = PRODUCTS[index];
+    if (state.money >= prod.cost) {
+        state.money -= prod.cost;
+        state.productIndex = index;
+        renderUpgrades(); // Re-render to show purchased status
+        updateUI();
+        // Effect
+        elItemDisplay.innerText = prod.emoji;
+        spawnFloatingText(window.innerWidth/2, window.innerHeight/2, "UPGRADED!");
+    }
+}
+
+function buyAutomation(index) {
+    const auto = AUTOMATION[index];
+    const cost = getAutomationCost(index);
+    if (state.money >= cost) {
+        state.money -= cost;
+        state.inventory[auto.id] = (state.inventory[auto.id] || 0) + 1;
+        recalcMPS();
+        renderUpgrades(); // Update costs
+        updateUI();
+    }
+}
+
+function getAutomationCost(index) {
+    const auto = AUTOMATION[index];
+    const count = state.inventory[auto.id] || 0;
+    // Cost scales by 1.15x per purchase
+    return Math.floor(auto.baseCost * Math.pow(1.15, count));
+}
+
+function recalcMPS() {
+    let mps = 0;
+    AUTOMATION.forEach(auto => {
+        const count = state.inventory[auto.id] || 0;
+        mps += count * auto.rate;
+    });
+    // Scale MPS by current product value (selling Gold Bars makes robots richer)
+    // To balance, we multiply by a factor of the product multiplier
+    // A simple approach: MPS * (CurrentProductBaseVal) is too OP.
+    // Let's keep MPS flat for now, or the numbers explode too fast for JS Number limit.
+    // Instead: Automation sells the Current Product? 
+    // Let's make it: MPS = TotalRate * (CurrentProductBaseValue * 0.5)
+    // This gives incentive to upgrade product for automation too.
+    state.mps = mps * Math.max(1, (getClickValue() * 0.1));
+}
+
+/** UI RENDERING **/
+
+function formatNumber(num) {
+    if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+    return Math.floor(num);
 }
 
 function updateUI() {
-    document.getElementById('aura-display').innerText = `Rizz: ${aura}`;
-    document.getElementById('lives-display').innerText = `Sanity: ${lives}`;
-    document.getElementById('wave-display').innerText = `Wave: ${wave}`;
-}
+    elMoney.innerText = '$' + formatNumber(state.money);
+    elCps.innerText = '$' + formatNumber(state.mps) + ' / sec';
+    elItemDisplay.innerText = getCurrentProduct().emoji;
 
-function selectTower(idx) {
-    selectedTowerIdx = idx;
-    // UI feedback
-    [0,1,2].forEach(i => {
-        document.getElementById(`btn${i}`).classList.remove('selected');
+    // Check affordability of buttons
+    document.querySelectorAll('.upgrade-card').forEach(card => {
+        const cost = parseInt(card.dataset.cost);
+        const costEl = card.querySelector('.upg-cost');
+        if (state.money >= cost) {
+            card.classList.add('affordable');
+            costEl.classList.add('can-buy');
+        } else {
+            card.classList.remove('affordable');
+            costEl.classList.remove('can-buy');
+        }
     });
-    document.getElementById(`btn${idx}`).classList.add('selected');
 }
 
-// Spawning Logic
-let spawnTimer = 0;
-let enemiesToSpawn = 0;
-let spawnType = 0;
-
-function manageWaves() {
-    if (enemies.length === 0 && enemiesToSpawn === 0) {
-        // Wave Complete, start next
-        wave++;
-        enemiesToSpawn = 5 + Math.floor(wave * 1.5);
-        spawnTimer = 0;
-        updateUI();
-        // Notify
-        showNotif(`WAVE ${wave} INCOMING!`);
-    }
-
-    if (enemiesToSpawn > 0) {
-        spawnTimer++;
-        if (spawnTimer > 60) { // spawn every second roughly
-            // Determine type based on wave
-            let type = 0;
-            if (wave > 2) type = Math.random() > 0.7 ? 1 : 0;
-            if (wave % 5 === 0 && enemiesToSpawn === 1) type = 2; // Boss at end of wave 5, 10...
-            
-            enemies.push(new Enemy(type));
-            enemiesToSpawn--;
-            spawnTimer = 0;
-        }
-    }
+function checkUnlocks() {
+    // Could be used to reveal hidden items later
 }
 
-function showNotif(text) {
-    const n = document.getElementById('notif');
-    n.innerText = text;
-    n.style.display = 'block';
-    setTimeout(() => { n.style.display = 'none'; }, 2000);
-}
+function renderUpgrades() {
+    // 1. Products List
+    elProductList.innerHTML = '';
+    PRODUCTS.forEach((prod, idx) => {
+        if (idx <= state.productIndex) return; // Already bought or current
+        // Only show next 2 available to keep mystery
+        if (idx > state.productIndex + 2) return;
 
-function endGame() {
-    gameOver = true;
-    showNotif("L BOZO + RATIO (GAME OVER)");
-    document.getElementById('notif').style.color = "red";
-}
+        const card = document.createElement('div');
+        card.className = 'upgrade-card';
+        card.dataset.cost = prod.cost;
+        card.onclick = () => buyProduct(idx);
+        card.innerHTML = `
+            <div class="upg-info">
+                <h3>${prod.emoji} ${prod.name}</h3>
+                <p>Value: $${formatNumber(prod.baseVal)} / click</p>
+            </div>
+            <div class="upg-cost">$${formatNumber(prod.cost)}</div>
+        `;
+        elProductList.appendChild(card);
+    });
 
-function gameLoop() {
-    if (gameOver) return;
-    
-    ctx.clearRect(0,0, canvas.width, canvas.height);
-
-    // Draw Map (Background)
-    ctx.fillStyle = "#222";
-    ctx.fillRect(0,0,canvas.width, canvas.height);
-
-    // Draw Path
-    ctx.strokeStyle = "#444";
-    ctx.lineWidth = TILE * 0.8;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.beginPath();
-    const p0 = pathPoints[0];
-    ctx.moveTo(p0.x * TILE + TILE/2, p0.y * TILE + TILE/2);
-    for (let i=1; i<pathPoints.length; i++) {
-        const p = pathPoints[i];
-        ctx.lineTo(p.x * TILE + TILE/2, p.y * TILE + TILE/2);
-    }
-    ctx.stroke();
-
-    // End Zone
-    const lastP = pathPoints[pathPoints.length-1];
-    ctx.font = "30px Arial";
-    ctx.fillText("⛪", lastP.x * TILE + TILE/2, lastP.y * TILE + TILE/2);
-
-
-    // Update & Draw Towers
-    towers.forEach(t => { t.update(); t.draw(); });
-
-    // Update & Draw Enemies
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        const e = enemies[i];
-        e.update();
-        e.draw();
-        if (e.hp <= 0) enemies.splice(i, 1);
+    if(state.productIndex === PRODUCTS.length - 1) {
+        elProductList.innerHTML = '<div style="padding:10px; color:#666; text-align:center">Max Product Reached!</div>';
     }
 
-    // Update & Draw Projectiles
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-        const p = projectiles[i];
-        p.update();
-        p.draw();
-        if (!p.active) projectiles.splice(i, 1);
-    }
-
-    // Particles
-    for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        ctx.font = "20px Arial";
-        ctx.globalAlpha = p.life / 30;
-        ctx.fillText(p.text, p.x, p.y - (30 - p.life)); // float up
-        p.life--;
-        if(p.life <= 0) particles.splice(i, 1);
-    }
-    ctx.globalAlpha = 1;
-
-    // Draw Grid Overlay (Subtle) for placement
-    if (selectedTowerIdx > -1) {
-        ctx.strokeStyle = "rgba(255,255,255,0.1)";
-        ctx.lineWidth = 1;
-        for(let r=0; r<ROWS; r++) {
-            for(let c=0; c<COLS; c++) {
-                ctx.strokeRect(c*TILE, r*TILE, TILE, TILE);
-            }
-        }
-    }
-
-    manageWaves();
-
-    requestAnimationFrame(gameLoop);
-}
-
-/** INPUT **/
-canvas.addEventListener('mousedown', handleClick);
-canvas.addEventListener('touchstart', e => {
-    // prevent scroll
-    if(e.target == canvas) e.preventDefault();
-    handleClick(e.touches[0]);
-});
-
-function handleClick(e) {
-    if (gameOver) return;
-    if (selectedTowerIdx === -1) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    // Scale for canvas resolution vs css size
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    const c = Math.floor((x * scaleX) / TILE);
-    const r = Math.floor((y * scaleY) / TILE);
-
-    // Checks
-    if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return;
-    
-    // 1. Check Cost
-    const towerInfo = towerTypes[selectedTowerIdx];
-    if (aura < towerInfo.cost) {
-        showNotif("NOT ENOUGH RIZZ!");
-        return;
-    }
-
-    // 2. Check overlap with towers
-    const existing = towers.find(t => t.c === c && t.r === r);
-    if (existing) return;
-
-    // 3. Check overlap with Path (Simple point collision for line segments)
-    if (isOnPath(c, r)) {
-        showNotif("CANT BUILD ON THE ROAD");
-        return;
-    }
-
-    // Place
-    aura -= towerInfo.cost;
-    towers.push(new Tower(c, r, selectedTowerIdx));
-    updateUI();
-    
-    // Create dust effect
-    createParticle(c, r, "💨");
-}
-
-function isOnPath(c, r) {
-    // Check if point (c,r) is on any segment of the path
-    // We treat path as slightly thicker lines
-    for (let i = 0; i < pathPoints.length - 1; i++) {
-        const p1 = pathPoints[i];
-        const p2 = pathPoints[i+1];
+    // 2. Automation List
+    elAutoList.innerHTML = '';
+    AUTOMATION.forEach((auto, idx) => {
+        const cost = getAutomationCost(idx);
+        const count = state.inventory[auto.id] || 0;
         
-        // Check if between p1 and p2
-        const minX = Math.min(p1.x, p2.x);
-        const maxX = Math.max(p1.x, p2.x);
-        const minY = Math.min(p1.y, p2.y);
-        const maxY = Math.max(p1.y, p2.y);
-
-        if (c >= minX && c <= maxX && r >= minY && r <= maxY) return true;
-    }
-    return false;
+        const card = document.createElement('div');
+        card.className = 'upgrade-card';
+        card.dataset.cost = cost;
+        card.onclick = () => buyAutomation(idx);
+        card.innerHTML = `
+            <div class="upg-info">
+                <h3>${auto.name} <span style="font-size:0.8rem; color:#888">(x${count})</span></h3>
+                <p>${auto.desc}</p>
+            </div>
+            <div class="upg-cost">$${formatNumber(cost)}</div>
+        `;
+        elAutoList.appendChild(card);
+    });
 }
 
+/** SAVE SYSTEM **/
+function saveGame() {
+    localStorage.setItem('vendingSave', JSON.stringify(state));
+}
+
+function loadGame() {
+    const saved = localStorage.getItem('vendingSave');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            state = { ...state, ...parsed }; // Merge to ensure new fields exist
+            recalcMPS();
+        } catch (e) { console.error("Save file corrupted"); }
+    }
+}
+
+function hardReset() {
+    if(confirm("Wipe all progress?")) {
+        localStorage.removeItem('vendingSave');
+        location.reload();
+    }
+}
+
+// Start
 init();
 
 </script>
