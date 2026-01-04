@@ -246,21 +246,29 @@ let state = {
     inventory: {}
 };
 
+// NOW 17 ITEMS
 const PRODUCTS = [
-    { name: "Soda",         emoji: "🥤", baseVal: 1,    cost: 0 },
-    { name: "Chips",        emoji: "🍟", baseVal: 2,    cost: 100 },
-    { name: "Pizza Slice",  emoji: "🍕", baseVal: 5,    cost: 500 },
-    { name: "Sushi",        emoji: "🍣", baseVal: 15,   cost: 2000 },
-    { name: "Smartphone",   emoji: "📱", baseVal: 50,   cost: 8000 },
-    { name: "Gold Bar",     emoji: "🥇", baseVal: 150,  cost: 25000 },
-    { name: "Diamond",      emoji: "💎", baseVal: 500,  cost: 100000 },
-    { name: "Bitcoin",      emoji: "₿",  baseVal: 1500, cost: 500000 },
-    { name: "Moon Rock",    emoji: "🌑", baseVal: 5000, cost: 2000000 },
-    { name: "Alien Egg",    emoji: "👽", baseVal: 25000, cost: 10000000 },
-    { name: "Time Machine", emoji: "⏳", baseVal: 100000, cost: 100000000 }
+    { name: "Soda",         emoji: "🥤", baseVal: 1,      cost: 0 },
+    { name: "Chips",        emoji: "🍟", baseVal: 2,      cost: 100 },
+    { name: "Pizza Slice",  emoji: "🍕", baseVal: 5,      cost: 500 },
+    { name: "Sushi",        emoji: "🍣", baseVal: 15,     cost: 2000 },
+    { name: "Smartphone",   emoji: "📱", baseVal: 50,     cost: 8000 },
+    { name: "Gold Bar",     emoji: "🥇", baseVal: 150,    cost: 25000 },
+    { name: "Diamond",      emoji: "💎", baseVal: 500,    cost: 100000 },
+    { name: "Bitcoin",      emoji: "₿",  baseVal: 1500,   cost: 500000 },
+    { name: "Moon Rock",    emoji: "🌑", baseVal: 5000,   cost: 2000000 },
+    { name: "Alien Egg",    emoji: "👽", baseVal: 25000,  cost: 10000000 },
+    { name: "Time Machine", emoji: "⏳", baseVal: 100000, cost: 100000000 },
+    
+    // NEW ITEMS
+    { name: "Soul NFT",     emoji: "👻", baseVal: 500000, cost: 500000000 },
+    { name: "Planet Earth", emoji: "🌍", baseVal: 2000000, cost: 2500000000 },
+    { name: "Dyson Sphere", emoji: "☀️", baseVal: 10000000, cost: 15000000000 },
+    { name: "Reality Glitch",emoji: "👾",baseVal: 50000000, cost: 100000000000 },
+    { name: "The Multiverse",emoji: "🌌",baseVal: 250000000,cost: 1000000000000 },
+    { name: "Meaning of Life",emoji: "🧘",baseVal: 1000000000,cost: 5000000000000 }
 ];
 
-// EXPANDED LIST - NOW 11 ITEMS
 const AUTOMATION = [
     { id: "kid",    name: "Neighborhood Kid", desc: "Just keeps tapping it.",        rate: 0.5,   baseCost: 15 },
     { id: "kicker", name: "Machine Kicker",   desc: "Sometimes violence works.",     rate: 2,     baseCost: 100 },
@@ -291,14 +299,12 @@ function init() {
     renderUpgrades();
     updateUI();
     
-    // Automation Loop
     setInterval(() => {
         if (state.mps > 0) {
             addMoney(state.mps / 10);
         }
     }, 100);
 
-    // Save Loop
     setInterval(saveGame, 5000);
 }
 
@@ -405,9 +411,13 @@ function recalcMPS() {
 
 /** UI RENDERING **/
 
+// UPDATED TO SUPPORT BILLIONS, TRILLIONS, QUADRILLIONS
 function formatNumber(num) {
-    if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+    if (num >= 1e15) return (num / 1e15).toFixed(2) + 'q'; // Quadrillion
+    if (num >= 1e12) return (num / 1e12).toFixed(2) + 'T'; // Trillion
+    if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';  // Billion
+    if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+    if (num >= 1e3) return (num / 1e3).toFixed(1) + 'k';
     if (num < 10 && num % 1 !== 0) return num.toFixed(1);
     return Math.floor(num);
 }
