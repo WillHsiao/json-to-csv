@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pac-Man Mobile</title>
+    <style>
+        body {
+            background-color: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 10px;
+            height: 100vh;
+            overflow: hidden; /* Prevent scroll on mobile */
+            touch-action: none; /* Disable browser gestures */
+        }
+        h1 { margin: 5px 0; font-size: 1.5rem; }
+        
+        #gameWrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            background-color: #000;
+            border: 3px solid navy;
+            display: block;
+            max-width: 100%; /* Responsive width */
+            height: auto;
+        }
+
+        #scoreBoard {
+            font-size: 20px;
+            margin-bottom: 5px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            max-width: 400px;
+        }
+
+        #gameOverMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 30px;
+            font-weight: bold;
+            color: yellow;
+            text-shadow: 2px 2px 4px red;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        /* D-Pad Styles */
+        #dpad {
+            display: grid;
+            grid-template-columns: 60px 60px 60px;
+            grid-template-rows: 60px 60px;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .d-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            cursor: pointer;
+        }
+        .d-btn:active { background: rgba(255, 255, 255, 0.3); }
+
+        /* Grid positioning for D-Pad */
+        .up { grid-column: 2; grid-row: 1; }
+        .left { grid-column: 1; grid-row: 2; }
+        .down { grid-column: 2; grid-row: 2; }
+        .right { grid-column: 3; grid-row: 2; }
+
+        .instructions { font-size: 0.8rem; color: #888; margin-top: 10px; text-align: center;}
+
+    </style>
+</head>
+<body>
+
+    <h1>Pac-Man JS</h1>
+    <div id="scoreBoard">
+        <div>Score: <span id="score">0</span></div>
+    </div>
+
+    <div id="gameWrapper">
+        <canvas id="gameCanvas"></canvas>
+        <div id="gameOverMessage">GAME OVER<br><span style="font-size:16px; color:white">Tap to Restart</span></div>
+    </div>
+
+    <div id="dpad">
+        <div class="d-btn up" data-key="ArrowUp">▲</div>
+        <div class="d-btn left" data-key="ArrowLeft">◀</div>
+        <div class="d-btn down" data-key="ArrowDown">▼</div>
+        <div class="d-btn right" data-key="ArrowRight">▶</div>
+    </div>
+
+    <div class="instructions">Swipe, tap buttons, or use Arrow Keys</div>
+
+
+<script>
+/*** CONSTANTS & CONFIG ***/
+const TILE_SIZE = 20;
+// Note: Canvas size will be set in init based on map
+const PACMAN_SPEED = TILE_SIZE / 5; 
+const GHOST_SPEED = TILE_SIZE / 10; 
+let score = 0;
+let gameOver = false;
+let dotsRemaining = 0;
+let gameLoopId;
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const msgEl = document.getElementById('gameOverMessage');
+
+// Map: 0=Wall, 1=Dot, 2=Empty, 3=Pacman, 4=Ghost
+const rawMap = [
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0],
+    [0,1,0,0,1,0,0,0,1,0,1,0,0,0,1,0,0,1,0],
+    [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    [0,1,0,0,1,0,1,0,0,0,0,0,1,0,1,0,0,1,0],
+    [0,1,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,1,0],
+    [0,0,0,0,1,0,0,0,2,0,2,0,0,0,1,0,0,0,0],
+    [2,2,2,0,1,0,2,2,2,4,2,2,2,0,1,0,2,2,2],
+    [0,0,0,0,1,0,2,0,0,2,0,0,2,0,1,0,0,0,0],
+    [0,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,0],
+    [0,1,0,0,1,0,1,0,0,0,0,0,1,0,1,0,0,1,0],
+    [0,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,0],
+    [0,0,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,0,0],
+    [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+];
+
+const ROWS = rawMap.length;
+const COLS = rawMap[0].length;
+// Set internal resolution
+canvas.width = COLS * TILE_SIZE;
+canvas.height = ROWS * TILE_SIZE;
+
+let map = [];
+
+const DIRECTIONS = {
+    ArrowUp:    { x: 0, y: -1, rot: -Math.PI/2 },
+    ArrowDown:  { x: 0, y: 1,  rot: Math.PI/2 },
+    ArrowLeft:  { x: -1, y: 0, rot: Math.PI },
+    ArrowRight: { x: 1, y: 0,  rot: 0 }
+};
+
+/*** CLASSES ***/
+class Pacman {
+    constructor(startX, startY) {
+        this.x = startX * TILE_SIZE + TILE_SIZE / 2;
+        this.y = startY * TILE_SIZE + TILE_SIZE / 2;
+        this.radius = TILE_SIZE * 0.4;
+        this.dir = null;     
+        this.nextDir = null; 
+        this.rotation = 0;
+    }
+
+    draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0.2 * Math.PI + this.rotation, 1.8 * Math.PI + this.rotation);
+        ctx.lineTo(this.x, this.y);
+        ctx.fillStyle = 'yellow';
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    update() {
+        const gridX = Math.floor(this.x / TILE_SIZE);
+        const gridY = Math.floor(this.y / TILE_SIZE);
+        
+        const centeredX = Math.abs((this.x % TILE_SIZE) - (TILE_SIZE / 2)) < PACMAN_SPEED / 2;
+        const centeredY = Math.abs((this.y % TILE_SIZE) - (TILE_SIZE / 2)) < PACMAN_SPEED / 2;
+        const isCentered = centeredX && centeredY;
+
+        if (this.nextDir && isCentered) {
+            const nextDt = DIRECTIONS[this.nextDir];
+            if (!this.isWall(gridX + nextDt.x, gridY + nextDt.y)) {
+                this.dir = this.nextDir;
+                this.x = gridX * TILE_SIZE + TILE_SIZE / 2;
+                this.y = gridY * TILE_SIZE + TILE_SIZE / 2;
+                this.nextDir = null;
+            }
+        }
+
+        if (this.dir) {
+            const dt = DIRECTIONS[this.dir];
+            if (isCentered && this.isWall(gridX + dt.x, gridY + dt.y)) {
+                // Stopped by wall
+            } else {
+                this.x += dt.x * PACMAN_SPEED;
+                this.y += dt.y * PACMAN_SPEED;
+                this.rotation = dt.rot;
+            }
+        }
+        
+        this.eatDot(gridX, gridY);
+    }
+
+    isWall(col, row) {
+        if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return true;
+        return map[row][col] === 0;
+    }
+
+    eatDot(col, row) {
+        const centeredX = Math.abs((this.x % TILE_SIZE) - (TILE_SIZE / 2)) < TILE_SIZE/4;
+        const centeredY = Math.abs((this.y % TILE_SIZE) - (TILE_SIZE / 2)) < TILE_SIZE/4;
+        
+        if (centeredX && centeredY && map[row][col] === 1) {
+            map[row][col] = 2; 
+            score += 10;
+            scoreEl.innerText = score;
+            dotsRemaining--;
+            if(dotsRemaining === 0) endGame("YOU WIN!");
+        }
+    }
+}
+
+class Ghost {
+    constructor(x, y, color) {
+        this.startX = x; this.startY = y;
+        this.x = x * TILE_SIZE + TILE_SIZE / 2;
+        this.y = y * TILE_SIZE + TILE_SIZE / 2;
+        this.color = color;
+        this.availableDirs = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        this.dir = this.availableDirs[Math.floor(Math.random() * 4)];
+    }
+
+    draw() {
+        const r = TILE_SIZE * 0.4;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y - r/4, r, Math.PI, 0);
+        ctx.fillRect(this.x - r, this.y - r/4, r*2, r + r/4);
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    update(pacX, pacY) {
+        const gridX = Math.floor(this.x / TILE_SIZE);
+        const gridY = Math.floor(this.y / TILE_SIZE);
+        
+        const centeredX = Math.abs((this.x % TILE_SIZE) - (TILE_SIZE / 2)) < GHOST_SPEED;
+        const centeredY = Math.abs((this.y % TILE_SIZE) - (TILE_SIZE / 2)) < GHOST_SPEED;
+        const isCentered = centeredX && centeredY;
+
+        if (isCentered) {
+            let validMoves = this.availableDirs.filter(d => {
+                 const dt = DIRECTIONS[d];
+                 return !this.isWall(gridX + dt.x, gridY + dt.y);
+            });
+            
+            if (validMoves.length > 1) {
+                 const oppositeDir = this.getOpposite(this.dir);
+                 validMoves = validMoves.filter(d => d !== oppositeDir);
+            }
+            
+            const dtCurrent = DIRECTIONS[this.dir];
+            if (this.isWall(gridX + dtCurrent.x, gridY + dtCurrent.y) || validMoves.length > 1) {
+                 this.dir = validMoves[Math.floor(Math.random() * validMoves.length)];
+                 this.x = gridX * TILE_SIZE + TILE_SIZE / 2;
+                 this.y = gridY * TILE_SIZE + TILE_SIZE / 2;
+            }
+        }
+
+        const dt = DIRECTIONS[this.dir];
+        this.x += dt.x * GHOST_SPEED;
+        this.y += dt.y * GHOST_SPEED;
+
+        const dist = Math.hypot(this.x - pacX, this.y - pacY);
+        if (dist < TILE_SIZE * 0.8) {
+            endGame("GAME OVER");
+        }
+    }
+
+    isWall(col, row) {
+        if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return true;
+        return map[row][col] === 0;
+    }
+
+    getOpposite(dir) {
+        if(dir === 'ArrowUp') return 'ArrowDown';
+        if(dir === 'ArrowDown') return 'ArrowUp';
+        if(dir === 'ArrowLeft') return 'ArrowRight';
+        if(dir === 'ArrowRight') return 'ArrowLeft';
+    }
+}
+
+/*** GAME CORE ***/
+let pacman;
+let ghosts = [];
+
+function initGame() {
+    score = 0;
+    dotsRemaining = 0;
+    gameOver = false;
+    scoreEl.innerText = score;
+    msgEl.style.display = 'none';
+    map = JSON.parse(JSON.stringify(rawMap));
+    ghosts = [];
+
+    let ghostColors = ['red', 'pink', 'cyan', 'orange'];
+    let ghostCount = 0;
+
+    for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+            const cell = map[row][col];
+            if (cell === 1) {
+                dotsRemaining++;
+            } else if (cell === 3) {
+                pacman = new Pacman(col, row);
+                map[row][col] = 2; 
+            } else if (cell === 4) {
+                ghosts.push(new Ghost(col, row, ghostColors[ghostCount % 4]));
+                ghostCount++;
+                map[row][col] = 2; 
+            }
+        }
+    }
+    
+    if (gameLoopId) cancelAnimationFrame(gameLoopId);
+    gameLoop();
+}
+
+function drawMap() {
+    for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+            const x = col * TILE_SIZE;
+            const y = row * TILE_SIZE;
+            const cell = map[row][col];
+
+            if (cell === 0) {
+                ctx.fillStyle = '#1919A6';
+                ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x,y,TILE_SIZE, TILE_SIZE);
+            } else if (cell === 1) {
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+}
+
+function update() {
+    if (gameOver) return;
+    pacman.update();
+    ghosts.forEach(g => g.update(pacman.x, pacman.y));
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawMap();
+    pacman.draw();
+    ghosts.forEach(g => g.draw());
+}
+
+function gameLoop() {
+    update();
+    draw();
+    if (!gameOver) {
+        gameLoopId = requestAnimationFrame(gameLoop);
+    }
+}
+
+function endGame(message) {
+    gameOver = true;
+    msgEl.innerHTML = message + "<br><span style='font-size:16px; color:white'>Tap to Restart</span>";
+    msgEl.style.display = 'block';
+    msgEl.style.color = message === "YOU WIN!" ? "#4caf50" : "red";
+}
+
+function handleInput(key) {
+    if (gameOver) {
+        initGame();
+        return;
+    }
+    if (DIRECTIONS[key]) {
+        pacman.nextDir = key;
+    }
+}
+
+/*** EVENT LISTENERS ***/
+
+// 1. Keyboard
+window.addEventListener('keydown', e => {
+    if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1) {
+        e.preventDefault();
+    }
+    if (e.code === 'Space' && gameOver) initGame();
+    handleInput(e.code);
+});
+
+// 2. D-Pad Buttons (Touch/Click)
+document.querySelectorAll('.d-btn').forEach(btn => {
+    btn.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // Stop zoom/scroll
+        handleInput(btn.dataset.key);
+    });
+    btn.addEventListener('mousedown', (e) => {
+        handleInput(btn.dataset.key);
+    });
+});
+
+// 3. Restart Click
+msgEl.addEventListener('touchstart', initGame);
+msgEl.addEventListener('click', initGame);
+
+// 4. Swipe Gestures
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.body.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+}, {passive: false});
+
+document.body.addEventListener('touchend', e => {
+    let touchEndX = e.changedTouches[0].screenX;
+    let touchEndY = e.changedTouches[0].screenY;
+    handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+}, {passive: false});
+
+function handleSwipe(sx, sy, ex, ey) {
+    const dx = ex - sx;
+    const dy = ey - sy;
+    if (Math.abs(dx) > Math.abs(dy)) {
+        // Horizontal
+        if (Math.abs(dx) > 30) { // Threshold
+            handleInput(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
+        }
+    } else {
+        // Vertical
+        if (Math.abs(dy) > 30) {
+            handleInput(dy > 0 ? 'ArrowDown' : 'ArrowUp');
+        }
+    }
+}
+
+// Start game
+initGame();
+
+</script>
+</body>
+</html>
